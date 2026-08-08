@@ -2,13 +2,15 @@
 #
 # install.sh - install information security tooling on Debian / Ubuntu / Kali.
 #
-# Companion to docs/security-tools.md. Use uninstall.sh to remove what this adds.
+# Companion to ../docs/security-tools.md. Use scripts/uninstall.sh to remove.
 #
 # Design notes:
 #   * Run as a normal user; the script calls sudo only for system packages.
 #   * apt packages are installed one by one so a package missing from your
 #     distro's repos (many are Kali-only) does not abort the whole run.
 #   * pipx / go tools are installed for the current user.
+#   * Every tool is counted: each line shows [done/total] progress and whether
+#     the tool was already present, newly installed, or skipped.
 #   * Heavy services (Metasploit, Sliver, Greenbone, Wazuh, BloodHound) are
 #     opt-in behind explicit flags.
 #
@@ -18,14 +20,11 @@ LOG="${LOG:-/tmp/sectools-install.log}"
 : > "$LOG"
 
 # ------------------------------------------------------------------ output ---
-if [ -t 1 ]; then C_G=$'\033[32m'; C_Y=$'\033[33m'; C_R=$'\033[31m'; C_B=$'\033[36m'; C_0=$'\033[0m'; else C_G= C_Y= C_R= C_B= C_0=; fi
+if [ -t 1 ]; then C_G=$'\033[32m'; C_Y=$'\033[33m'; C_R=$'\033[31m'; C_B=$'\033[36m'; C_D=$'\033[2m'; C_0=$'\033[0m'; else C_G= C_Y= C_R= C_B= C_D= C_0=; fi
 ok()   { printf '%s[ ok ]%s %s\n'   "$C_G" "$C_0" "$*"; }
 warn() { printf '%s[warn]%s %s\n'   "$C_Y" "$C_0" "$*"; }
 err()  { printf '%s[fail]%s %s\n'   "$C_R" "$C_0" "$*" >&2; }
 info() { printf '%s[info]%s %s\n'   "$C_B" "$C_0" "$*"; }
-
-FAILED_ALL=()
-INSTALLED_COUNT=0
 
 # --------------------------------------------------------------- privileges ---
 if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo"; fi
@@ -35,7 +34,7 @@ os_pretty() { . /etc/os-release 2>/dev/null; printf '%s' "${PRETTY_NAME:-unknown
 
 # --------------------------------------------------------------- tool lists ---
 # apt packages available on Kali; many also on Debian/Ubuntu. Missing ones are
-# skipped with a warning rather than aborting.
+# skipped rather than aborting.
 APT_OFFENSE=(
   # recon & scanning
   nmap masscan arp-scan netdiscover dnsutils dnsrecon whatweb
@@ -77,106 +76,150 @@ GO_OFFENSE=(
   github.com/projectdiscovery/naabu/v2/cmd/naabu@latest
 )
 
+# ----------------------------------------------------------------- progress ---
+TOTAL=0; TOTAL_W=1; STEP=0; PFX=""
+N_PRESENT=0; N_NEW=0; N_FAIL=0
+FAILED_ALL=()
+
+bump() { STEP=$((STEP+1)); PFX="$(printf '[%*d/%d]' "$TOTAL_W" "$STEP" "$TOTAL")"; }
+p_present() { printf '%s[ ok ]%s %s %spresent%s    %s\n'   "$C_G" "$C_0" "$PFX" "$C_D" "$C_0" "$1"; N_PRESENT=$((N_PRESENT+1)); }
+p_new()     { printf '%s[ ok ]%s %s %sinstalled%s  %s\n'   "$C_G" "$C_0" "$PFX" "$C_G" "$C_0" "$1"; N_NEW=$((N_NEW+1)); }
+p_fail()    { printf '%s[skip]%s %s %sskipped%s    %s\n'   "$C_Y" "$C_0" "$PFX" "$C_Y" "$C_0" "$1"; N_FAIL=$((N_FAIL+1)); FAILED_ALL+=("$1"); }
+p_dry()     { printf '%s[dry ]%s %s would install %s\n'    "$C_B" "$C_0" "$PFX" "$1"; }
+
+# how many items a run will process, so [done/total] is known up front
+compute_total() {
+  TOTAL=0
+  if [ "$MODE_OFF" -eq 1 ]; then
+    TOTAL=$(( TOTAL + ${#APT_OFFENSE[@]} + ${#PIPX_OFFENSE[@]} + ${#GO_OFFENSE[@]} + 1 ))   # +1 = netexec
+    [ "$WANT_MSF" -eq 1 ]    && TOTAL=$((TOTAL+1))
+    [ "$WANT_SLIVER" -eq 1 ] && TOTAL=$((TOTAL+1))
+  fi
+  if [ "$MODE_DEF" -eq 1 ]; then
+    TOTAL=$(( TOTAL + ${#APT_DEFENSE[@]} + ${#PIPX_DEFENSE[@]} ))
+    [ "$WANT_GVM" -eq 1 ]   && TOTAL=$((TOTAL+1))
+    [ "$WANT_WAZUH" -eq 1 ] && TOTAL=$((TOTAL+1))
+  fi
+  [ "$WANT_BH" -eq 1 ] && TOTAL=$((TOTAL+1))
+  TOTAL_W=${#TOTAL}
+}
+
 # ---------------------------------------------------------------- installers ---
 apt_update_done=0
-apt_update() { [ "$apt_update_done" = 1 ] && return; info "apt-get update"; $DRY $SUDO apt-get update -y >>"$LOG" 2>&1; apt_update_done=1; }
+apt_update() {
+  [ "$apt_update_done" = 1 ] && return; apt_update_done=1
+  [ -n "$DRY" ] && return
+  info "apt-get update"; $SUDO apt-get update -y >>"$LOG" 2>&1
+}
+# install a build/runtime dependency WITHOUT counting it as a tool
+apt_ensure() { apt_update; [ -n "$DRY" ] && return 0; $SUDO apt-get install -y --no-install-recommends "$@" >>"$LOG" 2>&1; }
 
 apt_install() {
   apt_update
   local p
   for p in "$@"; do
-    if [ -n "$DRY" ]; then echo "  would apt install: $p"; continue; fi
-    if $SUDO apt-get install -y --no-install-recommends "$p" >>"$LOG" 2>&1; then
-      ok "apt: $p"; INSTALLED_COUNT=$((INSTALLED_COUNT+1))
-    else
-      warn "apt: '$p' not available in this distro's repos (skipped)"; FAILED_ALL+=("apt:$p")
-    fi
+    bump
+    if [ -n "$DRY" ]; then p_dry "apt:$p"; continue; fi
+    if dpkg -s "$p" >/dev/null 2>&1; then p_present "apt:$p"; continue; fi
+    if $SUDO apt-get install -y --no-install-recommends "$p" >>"$LOG" 2>&1; then p_new "apt:$p"
+    else p_fail "apt:$p (not in this distro's repos)"; fi
   done
 }
 
 ensure_pipx() {
   command -v pipx >/dev/null 2>&1 && return
-  info "installing pipx"; apt_install pipx >/dev/null 2>&1 || true
+  info "installing pipx (dependency)"; apt_ensure pipx || true
   [ -n "$DRY" ] || pipx ensurepath >>"$LOG" 2>&1 || true
 }
 pipx_install() {
   ensure_pipx
-  local p
+  local p present
   for p in "$@"; do
-    if [ -n "$DRY" ]; then echo "  would pipx install: $p"; continue; fi
-    if pipx install "$p" >>"$LOG" 2>&1; then ok "pipx: $p"; INSTALLED_COUNT=$((INSTALLED_COUNT+1))
-    else warn "pipx: '$p' failed (see $LOG)"; FAILED_ALL+=("pipx:$p"); fi
+    bump
+    if [ -n "$DRY" ]; then p_dry "pipx:$p"; continue; fi
+    present="$(pipx list --short 2>/dev/null | awk '{print $1}' | grep -ix "$p" || true)"
+    if [ -n "$present" ]; then p_present "pipx:$p"; continue; fi
+    if pipx install "$p" >>"$LOG" 2>&1; then p_new "pipx:$p"; else p_fail "pipx:$p"; fi
   done
 }
 
 ensure_go() {
   command -v go >/dev/null 2>&1 && return 0
-  info "installing golang-go"; apt_install golang-go >/dev/null 2>&1 || true
+  info "installing golang-go (dependency)"; apt_ensure golang-go || true
   command -v go >/dev/null 2>&1
 }
 go_install() {
-  if ! ensure_go; then warn "Go toolchain unavailable; skipping go tools"; return; fi
-  local gobin m bin; gobin="$(go env GOPATH 2>/dev/null)/bin"
+  local m bin gobin
+  if ! ensure_go; then
+    for m in "$@"; do bump; if [ -n "$DRY" ]; then p_dry "go:$(basename "${m%@*}")"; else p_fail "go:$(basename "${m%@*}") (no Go toolchain)"; fi; done
+    return
+  fi
+  gobin="$(go env GOPATH 2>/dev/null)/bin"
   for m in "$@"; do
-    if [ -n "$DRY" ]; then echo "  would go install: $m"; continue; fi
-    if go install "$m" >>"$LOG" 2>&1; then
-      bin="$(basename "${m%@*}")"
-      if $SUDO cp -f "$gobin/$bin" /usr/local/bin/ >>"$LOG" 2>&1; then ok "go: $bin -> /usr/local/bin"; else ok "go: $bin (in $gobin)"; fi
-      INSTALLED_COUNT=$((INSTALLED_COUNT+1))
-    else warn "go: '$m' failed (see $LOG)"; FAILED_ALL+=("go:$m"); fi
+    bump; bin="$(basename "${m%@*}")"
+    if [ -n "$DRY" ]; then p_dry "go:$bin"; continue; fi
+    if command -v "$bin" >/dev/null 2>&1; then p_present "go:$bin"; continue; fi
+    if go install "$m" >>"$LOG" 2>&1; then $SUDO cp -f "$gobin/$bin" /usr/local/bin/ >>"$LOG" 2>&1 || true; p_new "go:$bin"; else p_fail "go:$bin"; fi
   done
 }
 
-install_netexec() {   # apt on Kali, else pipx from git
-  command -v netexec >/dev/null 2>&1 || command -v nxc >/dev/null 2>&1 && { ok "netexec already present"; return; }
-  if is_kali; then apt_install netexec; return; fi
+install_netexec() {
+  bump
+  if [ -n "$DRY" ]; then p_dry "netexec"; return; fi
+  if command -v netexec >/dev/null 2>&1 || command -v nxc >/dev/null 2>&1; then p_present "netexec"; return; fi
+  if is_kali && $SUDO apt-get install -y netexec >>"$LOG" 2>&1; then p_new "netexec"; return; fi
   ensure_pipx
-  [ -n "$DRY" ] && { echo "  would pipx install NetExec (git)"; return; }
-  if pipx install git+https://github.com/Pennyw0rth/NetExec >>"$LOG" 2>&1; then ok "pipx: NetExec"; else warn "NetExec install failed"; FAILED_ALL+=("netexec"); fi
+  if pipx install git+https://github.com/Pennyw0rth/NetExec >>"$LOG" 2>&1; then p_new "netexec"; else p_fail "netexec"; fi
 }
 
 install_metasploit() {
-  if command -v msfconsole >/dev/null 2>&1; then ok "metasploit already installed"; return; fi
-  if is_kali; then apt_install metasploit-framework; return; fi
+  bump
+  if [ -n "$DRY" ]; then p_dry "metasploit"; return; fi
+  if command -v msfconsole >/dev/null 2>&1; then p_present "metasploit"; return; fi
+  if is_kali; then $SUDO apt-get install -y metasploit-framework >>"$LOG" 2>&1 && p_new "metasploit" || p_fail "metasploit"; return; fi
   info "installing Metasploit via official nightly installer"
-  [ -n "$DRY" ] && { echo "  would run msfinstall (rapid7)"; return; }
   local tmp; tmp="$(mktemp)"
   if curl -fsSL https://raw.githubusercontent.com/rapid7/metasploit-omnibus/master/config/templates/metasploit-framework-wrappers/msfupdate.erb -o "$tmp" >>"$LOG" 2>&1; then
-    chmod 755 "$tmp"; $SUDO "$tmp" >>"$LOG" 2>&1 && ok "metasploit installed" || { warn "metasploit install failed"; FAILED_ALL+=("metasploit"); }
-  else warn "could not download msfinstall"; FAILED_ALL+=("metasploit"); fi
+    chmod 755 "$tmp"; $SUDO "$tmp" >>"$LOG" 2>&1 && p_new "metasploit" || p_fail "metasploit"
+  else p_fail "metasploit (download failed)"; fi
   rm -f "$tmp"
 }
 
 install_sliver() {
-  command -v sliver-server >/dev/null 2>&1 && { ok "sliver already installed"; return; }
+  bump
+  if [ -n "$DRY" ]; then p_dry "sliver"; return; fi
+  if command -v sliver-server >/dev/null 2>&1; then p_present "sliver"; return; fi
   info "installing Sliver C2 (adds a systemd service)"
-  [ -n "$DRY" ] && { echo "  would run sliver.sh/install"; return; }
-  curl -fsSL https://sliver.sh/install | $SUDO bash >>"$LOG" 2>&1 && ok "sliver installed" || { warn "sliver install failed"; FAILED_ALL+=("sliver"); }
+  curl -fsSL https://sliver.sh/install | $SUDO bash >>"$LOG" 2>&1 && p_new "sliver" || p_fail "sliver"
 }
 
 install_greenbone() {
-  info "installing Greenbone / OpenVAS (gvm) - this is large and slow"
-  apt_install gvm
-  [ -n "$DRY" ] && { echo "  would run gvm-setup"; return; }
-  info "running gvm-setup (downloads vuln feeds; note the admin password it prints)"
-  $SUDO gvm-setup >>"$LOG" 2>&1 && ok "greenbone set up (UI: https://127.0.0.1:9392)" || { warn "gvm-setup failed (see $LOG)"; FAILED_ALL+=("greenbone"); }
+  bump
+  if [ -n "$DRY" ]; then p_dry "greenbone/gvm"; return; fi
+  if command -v gvm-setup >/dev/null 2>&1 && command -v gsad >/dev/null 2>&1; then p_present "greenbone/gvm"; return; fi
+  info "installing Greenbone / OpenVAS (gvm) - large and slow"
+  $SUDO apt-get install -y gvm >>"$LOG" 2>&1 || { p_fail "greenbone/gvm"; return; }
+  info "running gvm-setup (downloads feeds; note the admin password it prints)"
+  $SUDO gvm-setup >>"$LOG" 2>&1 && p_new "greenbone/gvm (UI: https://127.0.0.1:9392)" || p_fail "greenbone/gvm (gvm-setup failed)"
 }
 
 install_wazuh() {
+  bump
+  if [ -n "$DRY" ]; then p_dry "wazuh"; return; fi
+  if systemctl list-unit-files 2>/dev/null | grep -q '^wazuh-manager'; then p_present "wazuh"; return; fi
   warn "Wazuh all-in-one installs indexer + server + dashboard and needs >=4 GB RAM"
-  [ -n "$DRY" ] && { echo "  would run wazuh-install.sh -a"; return; }
-  local tmp; tmp="$(mktemp -d)"; ( cd "$tmp" && curl -sO https://packages.wazuh.com/4.14/wazuh-install.sh && $SUDO bash ./wazuh-install.sh -a ) >>"$LOG" 2>&1 \
-    && ok "wazuh installed (credentials printed in $LOG)" || { warn "wazuh install failed (see $LOG)"; FAILED_ALL+=("wazuh"); }
+  local tmp; tmp="$(mktemp -d)"
+  ( cd "$tmp" && curl -sO https://packages.wazuh.com/4.14/wazuh-install.sh && $SUDO bash ./wazuh-install.sh -a ) >>"$LOG" 2>&1 \
+    && p_new "wazuh (credentials in $LOG)" || p_fail "wazuh"
   rm -rf "$tmp"
 }
 
 install_bloodhound() {
-  if ! command -v docker >/dev/null 2>&1; then warn "docker not found; install Docker first for BloodHound CE"; FAILED_ALL+=("bloodhound:docker"); return; fi
-  info "fetching BloodHound CE docker-compose to ./bloodhound-ce/"
-  [ -n "$DRY" ] && { echo "  would fetch getbhce compose + docker compose up"; return; }
+  bump
+  if [ -n "$DRY" ]; then p_dry "bloodhound-ce"; return; fi
+  if ! command -v docker >/dev/null 2>&1; then p_fail "bloodhound-ce (Docker not installed)"; return; fi
   mkdir -p bloodhound-ce && curl -fsSL https://ghst.ly/getbhce -o bloodhound-ce/docker-compose.yml >>"$LOG" 2>&1 \
-    && ok "BloodHound CE compose saved to ./bloodhound-ce/ (run: cd bloodhound-ce && docker compose up)" \
-    || { warn "could not fetch BloodHound compose"; FAILED_ALL+=("bloodhound"); }
+    && p_new "bloodhound-ce (run: cd bloodhound-ce && docker compose up)" || p_fail "bloodhound-ce"
 }
 
 # --------------------------------------------------------------------- usage ---
@@ -185,7 +228,7 @@ usage() {
 install.sh - install information security tooling (Debian/Ubuntu/Kali)
 
 USAGE:
-  ./install.sh [MODE] [OPTIONS]
+  ./scripts/install.sh [MODE] [OPTIONS]
 
 MODE (choose at least one; --all is the common case):
   --all              offensive + defensive tools (recommended)
@@ -199,17 +242,19 @@ OPTIONS:
   --with-wazuh       install Wazuh all-in-one SIEM/XDR (heavy, >=4 GB RAM)
   --with-bloodhound  fetch BloodHound CE docker-compose (needs Docker)
   --list             print what each mode installs and exit
-  --dry-run          show actions without changing anything
+  --dry-run          show actions (with progress) without changing anything
   -y, --yes          do not ask for confirmation
   -h, --help         this help
 
-EXAMPLES:
-  ./install.sh --all
-  ./install.sh --offensive --no-metasploit
-  ./install.sh --defensive --with-wazuh -y
-  ./install.sh --all --dry-run
+Each tool prints [done/total] progress and one of: present / installed / skipped.
 
-Log file: /tmp/sectools-install.log  (override with LOG=/path ./install.sh ...)
+EXAMPLES:
+  ./scripts/install.sh --all
+  ./scripts/install.sh --offensive --no-metasploit
+  ./scripts/install.sh --defensive --with-wazuh -y
+  ./scripts/install.sh --all --dry-run
+
+Log file: /tmp/sectools-install.log  (override with LOG=/path ...)
 EOF
 }
 
@@ -238,24 +283,25 @@ while [ $# -gt 0 ]; do
     --with-wazuh)     WANT_WAZUH=1 ;;
     --with-bloodhound) WANT_BH=1 ;;
     --list)           print_list; exit 0 ;;
-    --dry-run)        DRY="__DRY__" ;;
+    --dry-run)        DRY="1" ;;
     -y|--yes)         ASSUME_YES=1 ;;
     -h|--help)        usage; exit 0 ;;
     *) err "unknown option: $1"; echo; usage; exit 2 ;;
   esac
   shift
 done
-# normalise DRY into a non-empty marker used by the installer functions
-[ "$DRY" = "__DRY__" ] && DRY="1" || DRY=""
 
 [ $MODE_OFF -eq 0 ] && [ $MODE_DEF -eq 0 ] && { err "choose --all, --offensive, or --defensive"; usage; exit 2; }
 
+compute_total
+
 # ---------------------------------------------------------------------- run ---
 info "OS: $(os_pretty)   $(is_kali && echo '(Kali detected)')"
+info "Plan: $TOTAL tool(s) to process$([ $MODE_OFF -eq 1 ] && printf ' [offensive]')$([ $MODE_DEF -eq 1 ] && printf ' [defensive]')"
 [ -n "$DRY" ] && info "DRY RUN - no changes will be made"
 
 if [ $ASSUME_YES -eq 0 ] && [ -z "$DRY" ]; then
-  printf 'Proceed with installation? [y/N] '; read -r ans
+  printf 'Proceed with installation of %d tool(s)? [y/N] ' "$TOTAL"; read -r ans
   case "$ans" in y|Y|yes|YES) ;; *) echo "aborted"; exit 1 ;; esac
 fi
 
@@ -282,10 +328,17 @@ fi
 # ------------------------------------------------------------------ summary ---
 echo
 info "==================== SUMMARY ===================="
-ok "installed/attempted OK: $INSTALLED_COUNT item(s)"
-if [ ${#FAILED_ALL[@]} -gt 0 ]; then
-  warn "skipped or failed (${#FAILED_ALL[@]}): ${FAILED_ALL[*]}"
-  warn "packages marked 'not available' are usually Kali-only; install them on Kali or via pipx/go."
+if [ -n "$DRY" ]; then
+  info "would process $TOTAL tool(s) (dry run)"
+else
+  ok   "already present: $N_PRESENT"
+  ok   "newly installed: $N_NEW"
+  [ $N_FAIL -gt 0 ] && warn "skipped/failed: $N_FAIL"
+  info "progress: $STEP/$TOTAL processed  (present $N_PRESENT + new $N_NEW + skipped $N_FAIL)"
+  if [ ${#FAILED_ALL[@]} -gt 0 ]; then
+    warn "not installed: ${FAILED_ALL[*]}"
+    warn "items 'not in repos' are usually Kali-only; install on Kali or via pipx/go."
+  fi
 fi
 info "full log: $LOG"
 [ -n "$DRY" ] && info "this was a DRY RUN; re-run without --dry-run to apply."
