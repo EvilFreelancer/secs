@@ -22,7 +22,7 @@ breaks. This skill is the methodology for the second job.
 ## When NOT to Use
 
 - **Black-box testing of a running app** — use `testing-web-applications` or `testing-apis`
-- **A PHP codebase specifically** (type juggling, unserialize/phar POP chains, php:// wrappers) — this methodology plus `auditing-php-applications`
+- **A PHP codebase specifically** — this methodology applies directly; watch for type juggling, `unserialize`/phar POP chains, and `php://` wrappers
 - **Hunting a planted webshell or backdoor** rather than a vulnerability — use `hunting-web-backdoors`
 - **Binary-only targets** — use `analyzing-binaries`
 - **Dependency and build-pipeline risk** — use `auditing-supply-chain`

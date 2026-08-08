@@ -35,15 +35,9 @@ Activate this skill when the user asks to:
 - **Browser-rendered application surface** — use `testing-web-applications`
 - **Token and signature construction review** — use `reviewing-cryptography`
 - **LLM/agent tool APIs** — use `securing-ai-systems`
-- **GraphQL specifically** — use `attacking-graphql`; authorization moves to
-  resolvers and per-request rate limits break on batching
-- **gRPC / protobuf** — use `attacking-grpc-protobuf`; the schema must be
-  recovered before anything else works
-- **A parameter that makes the server fetch a URL** — use `exploiting-ssrf`
-- **A body or cookie holding a serialized object** — use `exploiting-deserialization`
-- **A JWT bearer token to forge, crack, or confuse** — use `attacking-jwt`
-- **The OAuth/OIDC flow that issues the token** — use `attacking-oauth-oidc`
-- **An XML or SOAP body that may resolve external entities** — use `exploiting-xxe`
+- **A parameter that makes the server fetch a URL** — use `testing-web-applications`
+- **A body or cookie holding a serialized object** — use `testing-web-applications`
+- **An XML or SOAP body that may resolve external entities** — use `testing-web-applications`
 
 ## Core Methodologies
 
@@ -187,7 +181,7 @@ curl https://api.target.com/users | jq
 See [references/graphql-and-injection-attacks.md](references/graphql-and-injection-attacks.md)
 for GraphQL discovery endpoints, introspection queries, query/mutation examples,
 and GraphQL-specific attack payloads (IDOR, mass assignment, batching/nesting DoS,
-alias abuse). For a full engagement, use the dedicated `attacking-graphql` skill.
+alias abuse). These GraphQL checks are part of this skill.
 
 ### 4. Authorization Testing
 
@@ -472,11 +466,11 @@ current ATT&CK release before citing them in a report._
 
 **Initial Access** (TA0001)
 
-- [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application — see also `testing-web-applications`, `enumerating-network-services`, `attacking-graphql`, `attacking-grpc-protobuf`, `exploiting-deserialization`, `exploiting-ssrf`, `exploiting-xxe`
+- [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application — see also `testing-web-applications`, `enumerating-network-services`
 
 **Credential Access** (TA0006)
 
-- [T1528](https://attack.mitre.org/techniques/T1528/) Steal Application Access Token — see also `exploiting-cloud-platforms`, `attacking-entra-id`, `attacking-oauth-oidc`
+- [T1528](https://attack.mitre.org/techniques/T1528/) Steal Application Access Token — see also `exploiting-cloud-platforms`
 
 Detection content for any of these: `engineering-detections`. Proactive search: `hunting-threats`. Post-compromise: `responding-to-incidents`.
 

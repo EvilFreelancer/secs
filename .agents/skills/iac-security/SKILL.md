@@ -23,10 +23,10 @@ Thin router for IaC static analysis. Pick the right workflow, run scanners in pa
 - "write a Rego policy for X" · "add Conftest rule for Y"
 
 ## When NOT to Use This Skill
-- **Runtime cloud assessment** (live AWS/Azure/GCP accounts, IAM policies in force, runtime resource state) → use `cloud-security`.
+- **Runtime cloud assessment** (live AWS/Azure/GCP accounts, IAM policies in force, runtime resource state) → use `exploiting-cloud-platforms`.
 - **Container image CVE scanning, admission control at runtime, cluster live scans** → use `container-security`.
-- **Secrets discovery in a codebase** → use `secrets-scanning` (pair with this skill for IaC files that contain secrets).
-- **Application source-code SAST** → use `code-security` / `sast`.
+- **Secrets discovery in a codebase** → use `auditing-supply-chain` (pair with this skill for IaC files that contain secrets).
+- **Application source-code SAST** → use `auditing-code-for-vulnerabilities` / `sast`.
 - **Pure drift detection vs deployed state** — not in scope; use Terraform Cloud / Driftctl / AWS Config.
 
 ## Decision Tree
@@ -107,7 +107,7 @@ Highest-impact finding families — fix these before anything else:
 4. **Unencrypted at-rest** — S3/EBS/RDS/Azure Storage without SSE or CMK; KMS without rotation → sev=`high`.
 5. **Privileged / hostPath / hostNetwork pods** — container escape / node-level blast radius → sev=`high`.
 6. **Missing audit trails** — CloudTrail disabled, Azure Activity Log export off, VPC flow logs missing → sev=`high`.
-7. **Hardcoded secrets** in IaC — re-route to `secrets-scanning` skill, keep a breadcrumb in this report.
+7. **Hardcoded secrets** in IaC — re-route to `auditing-supply-chain`, keep a breadcrumb in this report.
 
 Everything else (tagging, versioning, lifecycle, resource hygiene) queues behind the above.
 

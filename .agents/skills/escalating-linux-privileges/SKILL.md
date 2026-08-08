@@ -33,7 +33,7 @@ Activate this skill when the user asks to:
 ## When NOT to Use
 
 - **Windows hosts** — use `escalating-windows-privileges`
-- **Container escapes** — use `exploiting-containers`
+- **Container escapes** — use `container-security`
 - **Keeping the access you gained** — use `establishing-persistence`
 - **Analyzing a compromised host as a defender** — use `responding-to-incidents`
 
@@ -415,7 +415,7 @@ current ATT&CK release before citing them in a report._
 
 **Privilege Escalation** (TA0004)
 
-- [T1068](https://attack.mitre.org/techniques/T1068/) Exploitation for Privilege Escalation — see also `escalating-windows-privileges`, `exploiting-memory-corruption`
+- [T1068](https://attack.mitre.org/techniques/T1068/) Exploitation for Privilege Escalation — see also `escalating-windows-privileges`, `analyzing-binaries`
 - [T1548](https://attack.mitre.org/techniques/T1548/) Abuse Elevation Control Mechanism _(also Defense Evasion)_ — see also `escalating-windows-privileges`
 - [T1548.001](https://attack.mitre.org/techniques/T1548/001/) Setuid and Setgid
 - [T1548.003](https://attack.mitre.org/techniques/T1548/003/) Sudo and Sudo Caching
@@ -423,7 +423,7 @@ current ATT&CK release before citing them in a report._
 **Credential Access** (TA0006)
 
 - [T1003.008](https://attack.mitre.org/techniques/T1003/008/) /etc/passwd and /etc/shadow — see also `cracking-passwords`
-- [T1552](https://attack.mitre.org/techniques/T1552/) Unsecured Credentials — see also `exploiting-cloud-platforms`, `auditing-supply-chain`, `abusing-ci-cd-oidc`
+- [T1552](https://attack.mitre.org/techniques/T1552/) Unsecured Credentials — see also `exploiting-cloud-platforms`, `auditing-supply-chain`
 
 **Discovery** (TA0007)
 

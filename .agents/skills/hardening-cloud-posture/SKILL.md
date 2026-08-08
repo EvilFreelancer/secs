@@ -29,7 +29,7 @@ path is almost always a chain of IAM permissions, not a network hop. Rank by
   `investigating-azure-incidents`, or `investigating-gcp-incidents`
 - **Attacking the environment to prove the path** — use
   `exploiting-cloud-platforms`
-- **Kubernetes cluster-plane hardening** — use `defending-kubernetes`
+- **Kubernetes cluster-plane hardening** — use `container-security`
 - **Ranking CVEs in workloads rather than cloud config** — use
   `managing-vulnerabilities`
 
@@ -143,5 +143,5 @@ it.
 - `exploiting-cloud-platforms` — the attack paths this posture work closes
 - `investigating-aws-incidents` / `investigating-azure-incidents` /
   `investigating-gcp-incidents` — what the audit logging you enable here feeds
-- `defending-kubernetes` — the cluster plane, when the account runs managed k8s
+- `container-security` — the cluster plane, when the account runs managed k8s
 - `managing-vulnerabilities` — the workload-CVE counterpart to config posture

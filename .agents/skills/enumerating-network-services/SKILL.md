@@ -391,7 +391,7 @@ current ATT&CK release before citing them in a report._
 **Initial Access** (TA0001)
 
 - [T1133](https://attack.mitre.org/techniques/T1133/) External Remote Services _(also Persistence)_
-- [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application — see also `testing-web-applications`, `testing-apis`, `attacking-graphql`, `attacking-grpc-protobuf`, `exploiting-deserialization`, `exploiting-ssrf`, `exploiting-xxe`
+- [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application — see also `testing-web-applications`, `testing-apis`
 
 **Execution** (TA0002)
 
@@ -411,7 +411,7 @@ current ATT&CK release before citing them in a report._
 - [T1021](https://attack.mitre.org/techniques/T1021/) Remote Services — see also `attacking-active-directory`
 - [T1021.002](https://attack.mitre.org/techniques/T1021/002/) SMB/Windows Admin Shares — see also `attacking-active-directory`
 - [T1021.004](https://attack.mitre.org/techniques/T1021/004/) SSH — see also `escalating-linux-privileges`
-- [T1210](https://attack.mitre.org/techniques/T1210/) Exploitation of Remote Services — see also `exploiting-memory-corruption`
+- [T1210](https://attack.mitre.org/techniques/T1210/) Exploitation of Remote Services — see also `analyzing-binaries`
 
 Detection content for any of these: `engineering-detections`. Proactive search: `hunting-threats`. Post-compromise: `responding-to-incidents`.
 

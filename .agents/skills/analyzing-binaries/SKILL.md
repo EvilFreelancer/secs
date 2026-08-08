@@ -23,24 +23,16 @@ then read that carefully.
 
 - **Live malware with intent to detonate** — use `analyzing-malware`, which
   covers containment and safe detonation. Come back here for the disassembly.
-- **A raw shellcode blob with no headers** (position-independent payload,
-  stager, egg-hunter) — use `analyzing-shellcode`
 - **Source is available** — use `auditing-code-for-vulnerabilities`
 - **Android/iOS app assessment as a whole** — use `testing-mobile-applications`;
   use this skill for the native `.so`/Mach-O components inside it
-- **A framework runtime rather than a plain binary** — the toolchain is
-  specific and generic RE will not get there: `reversing-flutter-apps` for
-  `libapp.so`/Dart snapshots, `reversing-unity-il2cpp` for `libil2cpp.so` plus
-  `global-metadata.dat`, `reversing-react-native-apps` for Hermes bytecode
-- **A language runtime with its own symbol recovery** — `analyzing-go-binaries`
-  (`pclntab` survives stripping), `analyzing-rust-binaries` (panic strings leak
-  source paths), `analyzing-dotnet-assemblies` (IL decompiles to C#). Reaching
-  for generic RE on these wastes most of the effort
-- **A packed or protected executable** — use `unpacking-protected-binaries`
-  first; there is nothing to disassemble until it is dumped
-- **A whole firmware image to extract before any RE** — use
-  `analyzing-firmware-images` for `binwalk`, filesystem carving, and
-  cross-architecture emulation; return here for an individual binary inside it
+Framework runtimes (Flutter `libapp.so`/Dart snapshots, Unity `libil2cpp.so`
+plus `global-metadata.dat`, React Native Hermes), language runtimes with their
+own symbol recovery (Go `pclntab`, Rust panic strings, .NET IL), raw shellcode,
+packed or protected executables, and whole firmware images are all in scope
+here — each just needs its runtime-specific toolchain (`binwalk` and filesystem
+carving for firmware, an unpacker/dumper for protected binaries) rather than a
+cold disassembler pass.
 
 ## Triage First — Never Open a Disassembler Cold
 
@@ -240,9 +232,9 @@ current ATT&CK release before citing them in a report._
 
 **Defense Evasion** (TA0005)
 
-- [T1027](https://attack.mitre.org/techniques/T1027/) Obfuscated Files or Information — see also `analyzing-malware`, `analyzing-shellcode`
+- [T1027](https://attack.mitre.org/techniques/T1027/) Obfuscated Files or Information — see also `analyzing-malware`
 - [T1027.002](https://attack.mitre.org/techniques/T1027/002/) Software Packing — see also `analyzing-malware`
-- [T1140](https://attack.mitre.org/techniques/T1140/) Deobfuscate/Decode Files or Information — see also `analyzing-malware`, `analyzing-shellcode`
+- [T1140](https://attack.mitre.org/techniques/T1140/) Deobfuscate/Decode Files or Information — see also `analyzing-malware`
 - [T1497](https://attack.mitre.org/techniques/T1497/) Virtualization/Sandbox Evasion — see also `analyzing-malware`
 - [T1622](https://attack.mitre.org/techniques/T1622/) Debugger Evasion — see also `analyzing-malware`
 

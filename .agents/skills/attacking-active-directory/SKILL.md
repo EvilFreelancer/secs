@@ -20,7 +20,7 @@ verified: 2026-07-27
 - **Non-Windows / Linux-only environments** — use `enumerating-network-services`
 - **Cracking the hashes you collected** — use `cracking-passwords`
 - **Post-domain-compromise persistence** — use `establishing-persistence`
-- **Entra ID / Azure AD as the primary target** — use `attacking-entra-id`
+- **Entra ID / Azure AD as the primary target** — use `exploiting-cloud-platforms`
 - **Detecting these attacks defensively** — use `engineering-detections`
 
 A privileged, Kerberoastable account with no logon history is a classic
@@ -35,9 +35,7 @@ methodology here does not carry the tool-specific detail they do.
 
 | Signal | Skill |
 | --- | --- |
-| A CA exists (`pKIEnrollmentService`), `certipy find` flags a template, ESC1-ESC16 | `abusing-adcs` |
-| BloodHound flags Unconstrained/Constrained/RBCD delegation, `GenericWrite` over a computer | `attacking-kerberos-delegation` |
-| The target is Entra ID / Azure AD, tokens, PRTs, or hybrid-identity sync | `attacking-entra-id` |
+| The target is Entra ID / Azure AD, tokens, PRTs, or hybrid-identity sync | `exploiting-cloud-platforms` |
 
 The domain methodology below (Kerberoasting, DCSync, lateral movement) still
 applies; these skills specialize a single step of it and hand back here.
@@ -397,10 +395,10 @@ current ATT&CK release before citing them in a report._
 - [T1003.006](https://attack.mitre.org/techniques/T1003/006/) DCSync
 - [T1110.003](https://attack.mitre.org/techniques/T1110/003/) Password Spraying — see also `cracking-passwords`
 - [T1557](https://attack.mitre.org/techniques/T1557/) Adversary-in-the-Middle _(also Collection)_ — see also `attacking-wireless-networks`
-- [T1558](https://attack.mitre.org/techniques/T1558/) Steal or Forge Kerberos Tickets — see also `attacking-kerberos-delegation`
+- [T1558](https://attack.mitre.org/techniques/T1558/) Steal or Forge Kerberos Tickets
 - [T1558.003](https://attack.mitre.org/techniques/T1558/003/) Kerberoasting — see also `cracking-passwords`
 - [T1558.004](https://attack.mitre.org/techniques/T1558/004/) AS-REP Roasting
-- [T1649](https://attack.mitre.org/techniques/T1649/) Steal or Forge Authentication Certificates — see also `abusing-adcs`
+- [T1649](https://attack.mitre.org/techniques/T1649/) Steal or Forge Authentication Certificates
 
 **Discovery** (TA0007)
 

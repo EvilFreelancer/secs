@@ -20,19 +20,12 @@ verified: 2026-07-27
 - **Source code is available** — use `auditing-code-for-vulnerabilities` first;
   it finds more, faster
 - **Pure API/GraphQL surface** — use `testing-apis`
-- **Reviewing a pull request** — use `reviewing-code-changes`
+- **Reviewing a pull request** — use `auditing-code-for-vulnerabilities`
 - **LLM-backed features** — use `securing-ai-systems`
-- **Server fetches a user-supplied URL** — use `exploiting-ssrf`
-- **Serialized objects in cookies or parameters** (`rO0AB`, `O:`, `gAJ`) — use
-  `exploiting-deserialization`
-- **GraphQL or gRPC endpoints** — use `attacking-graphql` or
-  `attacking-grpc-protobuf`
-- **A JWT (`eyJ...`) in a header, cookie, or body** — use `attacking-jwt`
+- **GraphQL or gRPC endpoints** — use `testing-apis`
+- **A JWT (`eyJ...`) in a header, cookie, or body** — use `testing-apis`
 - **An OAuth/OIDC or "Sign in with X" flow** (`/authorize`, `redirect_uri`,
-  `code=`) — use `attacking-oauth-oidc`
-- **SAML SSO** (`SAMLResponse`, `<saml:Assertion>`, `/saml/acs`) — use
-  `attacking-saml`
-- **An endpoint that parses XML, SVG, or Office files** — use `exploiting-xxe`
+  `code=`) — use `testing-apis`
 
 ## SQL Injection
 
@@ -385,7 +378,7 @@ current ATT&CK release before citing them in a report._
 
 **Initial Access** (TA0001)
 
-- [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application — see also `testing-apis`, `enumerating-network-services`, `attacking-graphql`, `attacking-grpc-protobuf`, `exploiting-deserialization`, `exploiting-ssrf`, `exploiting-xxe`
+- [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application — see also `testing-apis`, `enumerating-network-services`
 
 **Execution** (TA0002)
 

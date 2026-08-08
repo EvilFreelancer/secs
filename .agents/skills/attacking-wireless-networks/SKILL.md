@@ -18,8 +18,9 @@ verified: 2026-07-27
 
 - **Wired network attacks** — use `enumerating-network-services`
 - **Cracking the captured handshake** — use `cracking-passwords`
-- **Bluetooth (Classic/BLE) or NFC** — use `attacking-bluetooth-nfc` for GATT
-  enumeration, card cloning, and RF sniffing; this skill is Wi-Fi only
+- **Bluetooth (Classic/BLE) or NFC** — not covered by the installed skills;
+  GATT enumeration, card cloning, and RF sniffing need dedicated tooling. This
+  skill is Wi-Fi only
 - **Zigbee or general SDR work beyond Wi-Fi** — outside this skill's scope
 - **Post-access network exploitation** — move to `performing-reconnaissance`
   once you are on the network

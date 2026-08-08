@@ -40,7 +40,7 @@ and order; reach for these when a single artifact type becomes the focus.
 | --- | --- |
 | A RAM capture to work through with Volatility (injected code, in-memory creds, dead-process connections) | `analyzing-memory-images` |
 | A Microsoft 365 / Entra ID compromise: no disk or memory, only cloud logs (UAL, sign-ins, OAuth grants) | `investigating-m365-entra` |
-| Finding how an attacker persisted on a Linux host — the systematic sweep across every init path | `analyzing-linux-persistence` |
+| Finding how an attacker persisted on a Linux host — the systematic sweep across every init path | `hunting-threats` |
 
 ## The Order That Matters
 

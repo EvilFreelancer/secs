@@ -26,8 +26,8 @@ Adversarial design-time analysis: enumerate threats against a system and specify
 - "map these threats to NIST / ASVS / CIS controls"
 
 ## When NOT to Use This Skill
-- **Runtime API testing / exploitation** of a live endpoint → use `api-security` (this skill identifies threats; `api-security` confirms exploitability).
-- **Code-level vulnerability discovery** in a repo (SAST/DAST/SCA) → use `sast-orchestration`.
+- **Runtime API testing / exploitation** of a live endpoint → use `testing-apis` (this skill identifies threats; `testing-apis` confirms exploitability).
+- **Code-level vulnerability discovery** in a repo (SAST/DAST/SCA) → use `auditing-code-for-vulnerabilities`.
 - **Container image CVE scanning** → use `container-security`.
 - **Cloud posture misconfigurations** → use `iac-security` / cloud-security skill.
 - **Incident response** on an active intrusion → this is design-time; use IR playbooks instead.

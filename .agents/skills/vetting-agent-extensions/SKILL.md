@@ -41,7 +41,7 @@ what can it read on its way out."
 - **Prompt-injection and tool-abuse testing of an LLM application you are
   assessing** — use `securing-ai-systems`.
 - **Reviewing a diff to an extension you have already adopted** — use
-  `reviewing-code-changes`; come back here only if the diff changes what loads
+  `auditing-code-for-vulnerabilities`; come back here only if the diff changes what loads
   into context or what runs on startup.
 
 ## What Makes an Extension Different

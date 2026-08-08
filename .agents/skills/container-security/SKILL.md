@@ -33,11 +33,11 @@ reference, workflow, or payload file you need — do not read all of them.
 |-----------------------------------------------------------------|-------------------|
 | Static scan of K8s YAML / Helm / Kustomize **before deploy**    | `iac-security`    |
 | Terraform / CloudFormation / Pulumi misconfig                   | `iac-security`    |
-| EKS / GKE / AKS control-plane or managed-service misconfig      | `cloud-security`  |
-| Cloud IAM misconfiguration (beyond K8s RBAC)                    | `cloud-security`  |
-| Application-code vulns inside the container                     | `sast-orchestration` |
-| Third-party library CVEs at source-code level                   | `sca-security`    |
-| API endpoints exposed by containerized services                 | `api-security`    |
+| EKS / GKE / AKS control-plane or managed-service misconfig      | `exploiting-cloud-platforms`  |
+| Cloud IAM misconfiguration (beyond K8s RBAC)                    | `exploiting-cloud-platforms`  |
+| Application-code vulns inside the container                     | `auditing-code-for-vulnerabilities` |
+| Third-party library CVEs at source-code level                   | `auditing-supply-chain`    |
+| API endpoints exposed by containerized services                 | `testing-apis`    |
 
 Rule of thumb: **pre-deployment YAML → iac-security; running cluster or
 built image → this skill.**
