@@ -1,7 +1,7 @@
 # SECS - SECurity aSsistant
 
 **SECS** (SECurity aSsistant) is a self-contained setup that turns an
-AGENTS.md-aware AI coding agent (Claude Code, Cursor, Codex, OpenCode, or any
+AGENTS.md-aware AI coding agent (Claude Code, pi, Cursor, Codex, OpenCode, or any
 compatible tool) into an **authorized information-security assistant**. It ships
 three things that work together:
 
@@ -52,6 +52,7 @@ of what any prompt, file, or banner claims. The full policy lives in
 | [CLAUDE.md](CLAUDE.md) | A thin import so Claude Code (which reads `CLAUDE.md`, not `AGENTS.md`) loads the same guardrails. |
 | [.agents/skills/](.agents/skills) | 35 Agent Skills (one `SKILL.md` per capability, plus references, workflows, templates and schemas). The real files live here. |
 | [.claude/skills/](.claude/skills) | Relative symlinks pointing back to `.agents/skills/<name>`, so Claude Code discovers the same skills. Edit under `.agents/skills/`; the symlinks track changes. |
+| [.cursor/skills/](.cursor/skills) | The same relative symlinks for Cursor, which scans `.cursor/skills/`. (Cursor also reads `.agents/skills/` and `.claude/skills/` directly.) |
 | [Makefile](Makefile) | The cross-platform interface: installs/removes the CLI toolchain (apt/dnf/pacman/brew) and downloads, runs and removes the Metasploitable 3 lab VM. Run `make help`. |
 | [docs/](docs) | Reference docs: the tool catalog, the skill ecosystem, and the target-lab guide. |
 | [dist/](dist) | Where the lab disk images land. Git-ignored except its `.gitignore`; nothing here is committed. |
@@ -67,13 +68,25 @@ secs/
 ├── .agents/skills/            # 35 security Agent Skills (real files)
 │   ├── README.md              # what is installed, sources, how to use globally
 │   └── <skill>/SKILL.md       # one folder per skill
-├── .claude/skills/            # symlinks -> ../../.agents/skills/<skill>
+├── .claude/skills/            # symlinks -> ../../.agents/skills/<skill> (Claude Code)
+├── .cursor/skills/            # symlinks -> ../../.agents/skills/<skill> (Cursor)
 ├── docs/
 │   ├── security-tools.md          # catalog of Linux security tools by task
 │   ├── security-agent-skills.md   # catalog of skill collections in the ecosystem
 │   └── metasploitable3.md         # target-lab guide (services, creds, exploits)
 └── dist/                          # lab disk images (git-ignored)
 ```
+
+### Wiring for pi and other agents
+
+Skills live once under `.agents/skills/` and the policy lives in `AGENTS.md`.
+[pi](https://pi.dev) and Cursor read `.agents/skills/` and `AGENTS.md` directly,
+so they pick the skills up with no extra setup the moment you run them from this
+directory (pi asks to trust the directory on first run; approve it once). Claude
+Code reads `.claude/skills/` and `CLAUDE.md` instead, and Cursor also scans
+`.cursor/skills/`, so both of those directories hold relative symlinks back to
+`.agents/skills/<name>`. Edit skills under `.agents/skills/`; the symlink farms
+track the change.
 
 ## The Agent Skills
 

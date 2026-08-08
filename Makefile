@@ -35,7 +35,7 @@ TAP          ?= tap0
 RESTRICT     ?= off
 # on = also block guest->host/internet in user mode (breaks reverse shells)
 WITH         ?=
-# heavy opt-ins: comma list of metasploit,sliver,greenbone,wazuh,bloodhound
+# heavy opt-ins: comma list of metasploit,sliver,greenbone,wazuh,bloodhound,mobsf,cloudclis,setools
 NO_MSF       ?=
 # set to 1 to skip Metasploit in the offensive set
 PURGE        ?=
@@ -140,15 +140,17 @@ OFFENSIVE_apt := nmap masscan arp-scan netdiscover dnsutils dnsrecon whatweb \
   wordlists seclists bettercap ettercap-graphical responder aircrack-ng wifite \
   kismet hcxdumptool hcxtools reaver bully radare2 gdb strace ltrace \
   impacket-scripts smbclient smbmap enum4linux nbtscan burpsuite maltego cutter \
-  ghidra beef-xss
+  ghidra beef-xss jadx apktool adb mitmproxy whois
 OFFENSIVE_dnf := nmap masscan arp-scan bind-utils whatweb nikto sqlmap hydra \
   medusa john hashcat crunch aircrack-ng hcxtools hcxdumptool radare2 gdb \
-  strace ltrace samba-client nbtscan
+  strace ltrace samba-client nbtscan mitmproxy android-tools whois
 OFFENSIVE_yum := $(OFFENSIVE_dnf)
 OFFENSIVE_pacman := nmap masscan arp-scan bind whatweb nikto sqlmap hydra john \
-  hashcat aircrack-ng hcxtools hcxdumptool radare2 gdb strace ltrace smbclient
+  hashcat aircrack-ng hcxtools hcxdumptool radare2 gdb strace ltrace smbclient \
+  mitmproxy android-tools whois
 OFFENSIVE_brew := nmap masscan nikto sqlmap wpscan hydra john-jumbo hashcat ffuf \
-  gobuster feroxbuster amass medusa ncrack aircrack-ng bettercap radare2
+  gobuster feroxbuster amass medusa ncrack aircrack-ng bettercap radare2 \
+  apktool jadx mitmproxy android-platform-tools
 OFFENSIVE := $(OFFENSIVE_$(PKG))
 
 DEFENSIVE_apt := wireshark tshark tcpdump suricata snort fail2ban lynis rkhunter \
@@ -165,8 +167,8 @@ DEFENSIVE_brew := wireshark tcpdump suricata clamav yara binwalk sleuthkit
 DEFENSIVE := $(DEFENSIVE_$(PKG))
 
 # Portable, distro-independent tools (same everywhere).
-PIPX_OFFENSIVE := theHarvester wapiti3 shodan
-PIPX_DEFENSIVE := volatility3
+PIPX_OFFENSIVE := theHarvester wapiti3 shodan frida-tools objection awscli
+PIPX_DEFENSIVE := volatility3 uv
 GO_OFFENSIVE   := github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest \
                   github.com/projectdiscovery/naabu/v2/cmd/naabu@latest
 GO_BINS        := nuclei naabu
@@ -231,6 +233,8 @@ endef
         uninstall uninstall-all uninstall-offensive uninstall-defensive \
         uninstall-metasploit uninstall-sliver uninstall-greenbone \
         uninstall-wazuh uninstall-bloodhound _go-remove \
+        install-mobsf install-cloudclis install-setools \
+        uninstall-mobsf uninstall-cloudclis uninstall-setools \
         vm-download vm-run vm-run-fg vm-status vm-ssh vm-stop vm-remove _vm-boot
 
 help:
@@ -245,7 +249,7 @@ help:
 	@echo "  make install-dry        Preview what would be installed (no changes)"
 	@echo "  make uninstall          Remove what install added"
 	@echo ""
-	@echo "  Heavy opt-ins:  make install WITH=sliver,greenbone,wazuh,bloodhound"
+	@echo "  Heavy opt-ins:  make install WITH=sliver,greenbone,wazuh,bloodhound,mobsf,cloudclis,setools"
 	@echo "  Skip Metasploit: make install-offensive NO_MSF=1"
 	@echo "  apt purge:       make uninstall PURGE=1"
 	@echo ""
@@ -271,7 +275,7 @@ doctor:
 	@echo "offensive   : $(words $(OFFENSIVE)) $(PKG) pkgs + $(words $(PIPX_OFFENSIVE)) pipx + $(words $(GO_BINS)) go + netexec"
 	@echo "defensive   : $(words $(DEFENSIVE)) $(PKG) pkgs + $(words $(PIPX_DEFENSIVE)) pipx"
 	@printf 'key tools   : '
-	@for t in nmap sqlmap hydra hashcat radare2 tshark yara pipx go docker qemu-system-x86_64 msfconsole; do \
+	@for t in nmap sqlmap hydra hashcat radare2 tshark yara frida aws pipx go docker qemu-system-x86_64 msfconsole; do \
 	  if command -v $$t >/dev/null 2>&1; then printf '%s ' $$t; else printf '(%s) ' $$t; fi; done; echo
 	@[ "$(PKG)" = none ] && echo "warning: no supported package manager; only pipx/go tools can be installed" || true
 
@@ -340,7 +344,7 @@ _netexec:
 # Dispatch WITH=a,b,c to the matching install-* targets.
 _with-extras:
 	@for w in $(subst $(comma),$(space),$(WITH)); do case "$$w" in \
-	  metasploit|sliver|greenbone|wazuh|bloodhound) $(MAKE) --no-print-directory install-$$w;; \
+	  metasploit|sliver|greenbone|wazuh|bloodhound|mobsf|cloudclis|setools) $(MAKE) --no-print-directory install-$$w;; \
 	  "") : ;; \
 	  *) echo "  unknown WITH item: $$w";; \
 	esac; done
@@ -377,6 +381,37 @@ install-bloodhound:
 	elif ! command -v docker >/dev/null 2>&1; then echo "  skipped   bloodhound-ce (Docker not installed)"; \
 	else mkdir -p bloodhound-ce && curl -fsSL https://ghst.ly/getbhce -o bloodhound-ce/docker-compose.yml >>$(LOG) 2>&1 && echo "  installed bloodhound-ce (run: cd bloodhound-ce && docker compose up)" || echo "  skipped   bloodhound-ce"; fi
 
+install-mobsf:
+	@if [ -n "$(DRY)" ]; then echo "  would-install mobsf (docker image)"; \
+	elif ! command -v docker >/dev/null 2>&1; then echo "  skipped   mobsf (Docker not installed)"; \
+	elif docker image inspect opensecurity/mobile-security-framework-mobsf >/dev/null 2>&1; then echo "  present   mobsf (docker image)"; \
+	else echo "  pulling MobSF image (large) ..."; docker pull opensecurity/mobile-security-framework-mobsf:latest >>$(LOG) 2>&1 && echo "  installed mobsf (run: docker run -it --rm -p 8000:8000 opensecurity/mobile-security-framework-mobsf)" || echo "  skipped   mobsf"; fi
+
+install-cloudclis:
+	@if [ -n "$(DRY)" ]; then echo "  would-install azure-cli, gcloud, powershell (aws is in the base pipx set)"; exit 0; fi; \
+	echo "  aws: installed via pipx in the base offensive set (pipx:awscli)"; \
+	if command -v az >/dev/null 2>&1; then echo "  present   azure-cli"; \
+	elif [ "$(PKG)" = brew ]; then brew install azure-cli >>$(LOG) 2>&1 && echo "  installed azure-cli" || echo "  skipped   azure-cli"; \
+	elif [ "$(PKG)" = apt ]; then curl -fsSL https://aka.ms/InstallAzureCLIDeb | $(SUDO) bash >>$(LOG) 2>&1 && echo "  installed azure-cli" || echo "  skipped   azure-cli"; \
+	else echo "  skipped   azure-cli (see https://learn.microsoft.com/cli/azure/install-azure-cli)"; fi; \
+	if command -v gcloud >/dev/null 2>&1; then echo "  present   gcloud"; \
+	elif [ "$(PKG)" = brew ]; then brew install --cask google-cloud-sdk >>$(LOG) 2>&1 && echo "  installed gcloud" || echo "  skipped   gcloud"; \
+	elif command -v curl >/dev/null 2>&1; then curl -fsSL https://sdk.cloud.google.com | bash >>$(LOG) 2>&1 && echo "  installed gcloud (open a new shell for PATH)" || echo "  skipped   gcloud"; \
+	else echo "  skipped   gcloud (see https://cloud.google.com/sdk/docs/install)"; fi; \
+	if command -v pwsh >/dev/null 2>&1; then echo "  present   powershell"; \
+	elif [ "$(PKG)" = brew ]; then brew install --cask powershell >>$(LOG) 2>&1 && echo "  installed powershell" || echo "  skipped   powershell"; \
+	elif command -v snap >/dev/null 2>&1; then $(SUDO) snap install powershell --classic >>$(LOG) 2>&1 && echo "  installed powershell (then: Install-Module ExchangeOnlineManagement)" || echo "  skipped   powershell"; \
+	else echo "  skipped   powershell (see https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-linux)"; fi
+
+install-setools:
+	@if [ -n "$(DRY)" ]; then echo "  would-install gophish, evilginx2"; exit 0; fi; \
+	if command -v evilginx2 >/dev/null 2>&1 || command -v evilginx >/dev/null 2>&1; then echo "  present   evilginx2"; \
+	elif command -v go >/dev/null 2>&1; then gobin="$$(go env GOPATH)/bin"; if go install github.com/kgretzky/evilginx2@latest >>$(LOG) 2>&1; then { [ -w /usr/local/bin ] && cp -f "$$gobin/evilginx2" /usr/local/bin/ 2>>$(LOG); } || { [ -n "$(SUDO)" ] && $(SUDO) cp -f "$$gobin/evilginx2" /usr/local/bin/ 2>>$(LOG); } || true; echo "  installed evilginx2 (run with -p <phishlets dir> from a repo clone)"; else echo "  skipped   evilginx2"; fi; \
+	else echo "  skipped   evilginx2 (no Go toolchain)"; fi; \
+	if [ -x gophish/gophish ]; then echo "  present   gophish (./gophish)"; \
+	elif command -v curl >/dev/null 2>&1 && command -v unzip >/dev/null 2>&1; then mkdir -p gophish && curl -fsSL -o gophish/gophish.zip https://github.com/gophish/gophish/releases/download/v0.12.1/gophish-v0.12.1-linux-64bit.zip >>$(LOG) 2>&1 && ( cd gophish && unzip -o gophish.zip >>$(LOG) 2>&1 ) && chmod +x gophish/gophish 2>/dev/null && echo "  installed gophish (./gophish/gophish; set URLs in config.json)" || echo "  skipped   gophish"; \
+	else echo "  skipped   gophish (need curl and unzip)"; fi
+
 # ============================================================================
 # Uninstall
 # ============================================================================
@@ -389,7 +424,7 @@ uninstall-offensive:
 	$(call do_remove,$(OFFENSIVE))
 	$(call do_pipx_remove,$(PIPX_OFFENSIVE) netexec)
 	@$(MAKE) --no-print-directory _go-remove
-	@for w in $(subst $(comma),$(space),$(WITH)); do case "$$w" in metasploit|sliver|greenbone|wazuh|bloodhound) $(MAKE) --no-print-directory uninstall-$$w;; esac; done
+	@for w in $(subst $(comma),$(space),$(WITH)); do case "$$w" in metasploit|sliver|greenbone|wazuh|bloodhound|mobsf|cloudclis|setools) $(MAKE) --no-print-directory uninstall-$$w;; esac; done
 
 uninstall-defensive:
 	@echo "=== removing DEFENSIVE ==="
@@ -419,6 +454,22 @@ uninstall-wazuh:
 
 uninstall-bloodhound:
 	@if [ -f bloodhound-ce/docker-compose.yml ] && command -v docker >/dev/null 2>&1; then ( cd bloodhound-ce && docker compose down -v ) >>$(LOG) 2>&1 && echo "  removed   bloodhound-ce" || echo "  failed    bloodhound-ce"; else echo "  absent    bloodhound-ce"; fi
+
+uninstall-mobsf:
+	@if command -v docker >/dev/null 2>&1 && docker image inspect opensecurity/mobile-security-framework-mobsf >/dev/null 2>&1; then docker rmi opensecurity/mobile-security-framework-mobsf:latest >>$(LOG) 2>&1 && echo "  removed   mobsf image" || echo "  failed    mobsf image"; else echo "  absent    mobsf"; fi
+
+uninstall-cloudclis:
+	@echo "  cloud CLIs come from vendor repos/installers; remove them manually:"
+	@echo "    azure-cli  : $(SUDO) apt-get remove -y azure-cli   (or the vendor uninstaller)"
+	@echo "    gcloud     : remove the google-cloud-sdk install dir / package"
+	@echo "    powershell : $(SUDO) snap remove powershell   (or apt/brew per how it was installed)"
+	@echo "    aws (pipx) : removed by make uninstall-offensive"
+
+uninstall-setools:
+	@rm -rf gophish 2>>$(LOG) || true; \
+	for b in evilginx2 evilginx; do if [ -e /usr/local/bin/$$b ]; then { [ -w /usr/local/bin/$$b ] && rm -f /usr/local/bin/$$b; } || $(SUDO) rm -f /usr/local/bin/$$b 2>>$(LOG) || true; fi; done; \
+	gobin="$$(command -v go >/dev/null 2>&1 && go env GOPATH 2>/dev/null)/bin"; [ -n "$$gobin" ] && rm -f "$$gobin/evilginx2" 2>>$(LOG) || true; \
+	echo "  removed   setools (gophish dir + evilginx2 binary)"
 
 # ============================================================================
 # Practice VM lab

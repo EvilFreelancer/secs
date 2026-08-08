@@ -289,6 +289,13 @@ Claude Code reads `CLAUDE.md`, not `AGENTS.md`. This repo ships a `CLAUDE.md`
 that imports this file so the guardrails load in Claude Code as well. Keep the
 substance here; keep `CLAUDE.md` a thin import.
 
+Agents that read `AGENTS.md` natively - pi (https://pi.dev), Cursor, Codex,
+OpenCode - load this file and the skills under `.agents/skills/` directly, with no
+shim. Run them from the repo root so the policy and skills are in scope; pi asks
+to trust the directory on first run. Claude Code and Cursor each read their own
+symlink farm (`.claude/skills/`, `.cursor/skills/`) that points back at the same
+files.
+
 ## References
 
 Practices above are drawn from the AGENTS.md spec (https://agents.md/) and from
