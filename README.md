@@ -18,6 +18,18 @@ The result is a repository you drop an agent into so it can help a security
 professional with offensive and defensive work, while staying inside strict
 rules of engagement.
 
+## How it fits together
+
+![High-level architecture of SECS: an AI coding agent on the dev host, governed by the AGENTS.md prompt and equipped with security skills, drives a Linux security toolchain against isolated targets](assets/plan.jpg)
+
+At a high level, an AI coding agent (cloud or local) runs on the developer's
+host, bound by the [AGENTS.md](AGENTS.md) prompt, drawing on the
+[Agent Skills](.agents/skills), and wired to the security toolchain (Metasploit,
+CVE data, nmap, John the Ripper, and the rest from
+[scripts/install.sh](scripts/install.sh)). That toolchain only ever reaches
+isolated, operator-owned targets - a Kali container and the local
+Metasploitable 3 lab - so nothing leaves the sandbox.
+
 ## Authorized use only
 
 This project is for **authorized security testing and defensive operations
