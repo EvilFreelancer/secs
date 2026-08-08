@@ -6,6 +6,7 @@ A catalog of Agent Skills and skill collections that help AI coding agents (Clau
 
 ## Multi-skill collections and plugins
 
+- **Anthropic Cybersecurity Skills** (mukul975) - the largest collection listed here: 817 task-scoped skills across 29 domains (cloud, threat hunting, threat intelligence, DFIR, malware analysis, OT/ICS, mobile, phishing, ransomware, deception and more), each a `SKILL.md` with YAML frontmatter and mapped to six frameworks (MITRE ATT&CK v19.1, NIST CSF 2.0, MITRE D3FEND, MITRE ATLAS, NIST AI RMF, MITRE F3); ships as an installable Claude Code plugin/marketplace, Apache-2.0. Its skills are far more granular than this project's broad umbrella Skills, so treat it as a reference library and per-technique source rather than a drop-in replacement; https://github.com/mukul975/Anthropic-Cybersecurity-Skills ;
 - **SecSkills** (trilwu/secskills) - a pentesting plugin with 16 core skills and 6 subagents covering the full offensive lifecycle (recon, web/API testing, malware analysis, detection engineering, incident response); https://github.com/trilwu/secskills ;
 - **AI Security Arsenal** (hardw00t) - skills, agents and workflows for mobile, web, cloud, network, code and AI/ML security, compatible with several agents; https://github.com/hardw00t/ai-security-arsenal ;
 - **Transilience Community Tools** - a consolidated suite of 26 skills plus tool integrations spanning recon to reporting; https://github.com/transilienceai/communitytools ;

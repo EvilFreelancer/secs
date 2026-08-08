@@ -17,24 +17,31 @@ is intentionally insecure; do not expose it to a real network.
 
 ## Getting it running (this repo)
 
-The two helper scripts live in `scripts/` and keep the disk under `dist/`.
+Everything is driven by `make` from the repo root; the disk lands under `dist/`.
 
 ```bash
 # 1. download the box and convert it to dist/metasploitable3-ub1404.qcow2
-./scripts/download-metasploitable3.sh ub1404
+make vm-download
 
-# 2. boot it under QEMU/KVM (isolated user-mode networking + VNC console)
-./scripts/run-metasploitable3.sh ub1404
+# 2. boot it under QEMU (isolated user-mode networking + VNC console)
+make vm-run
 ```
 
-Useful environment knobs for the run script:
+`make vm-run` boots in the background and writes `dist/ms3-<variant>.run.log`;
+`make vm-run-fg` runs it in the foreground instead. Useful knobs (override on the
+command line, e.g. `make vm-run RAM_MB=8192`):
 
-- `RAM_MB` and `CPUS` size the guest (defaults 2048 MiB / 2 vCPU; the Java
-  services like ElasticSearch are happier with 4096+);
+- `VARIANT=ub1404|win2k8` picks the target (default `ub1404`);
+- `RAM_MB` and `CPUS` size the guest (defaults 4096 MiB / 2 vCPU; the Java
+  services like ElasticSearch are happier with more);
 - `DISPLAY_MODE=vnc|none|sdl|gtk` picks the console; VNC listens on
   `127.0.0.1:5900` (`VNC=127.0.0.1:1` moves it to 5901);
 - `SNAPSHOT=1` throws away all disk writes on exit (disposable session);
 - `NET_MODE=user|tap|none` selects networking (see below).
+
+`make vm-status` shows whether it is running and tails the launch log,
+`make vm-ssh` opens a shell in the guest (vagrant/vagrant), `make vm-stop` powers
+it off, and `make vm-remove` deletes the box and disk image.
 
 The console is reached over VNC, for example `vncviewer 127.0.0.1:5900`. Log in
 there with the credentials below, or reach the services over the host port
@@ -188,8 +195,8 @@ directly reachable.
 
 ## Resetting the target
 
-- `SNAPSHOT=1 ./scripts/run-metasploitable3.sh ub1404` boots a throwaway session
-  and discards every change on exit - good for a clean slate each run.
+- `make vm-run SNAPSHOT=1` boots a throwaway session and discards every change on
+  exit - good for a clean slate each run.
 - For a persistent-but-revertable disk, take a qcow2 snapshot before testing:
 
   ```bash
