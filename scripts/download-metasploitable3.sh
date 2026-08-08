@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # download-metasploitable3.sh - fetch the Metasploitable 3 target VM and
-# convert it into a QEMU-ready qcow2 disk in ./dist.
+# convert it into a QEMU-ready qcow2 disk in ../dist.
 #
 # Metasploitable 3 is NOT shipped as a ready-made disk image. Rapid7 publishes
 # it as Vagrant boxes on the HCP Vagrant registry. This script downloads the
@@ -11,18 +11,19 @@
 # Companion: run-metasploitable3.sh boots the resulting disk.
 #
 # Variants:
-#   ub1404  Ubuntu 14.04 Linux target   (default, ~1.8 GB download)
+#   ub1404  Ubuntu 14.04 Linux target   (default, ~2.1 GB download)
 #   win2k8  Windows Server 2008 R2 target (large, ~5 GB download)
 #
 # Usage:
-#   ./download-metasploitable3.sh [ub1404|win2k8]
-#   FORCE=1 ./download-metasploitable3.sh ub1404      # re-download and re-convert
-#   KEEP_BOX=0 ./download-metasploitable3.sh ub1404   # delete the .box after convert
+#   ./scripts/download-metasploitable3.sh [ub1404|win2k8]
+#   FORCE=1 ./scripts/download-metasploitable3.sh ub1404      # re-download+convert
+#   KEEP_BOX=0 ./scripts/download-metasploitable3.sh ub1404   # delete .box after
 #
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DIST_DIR="${DIST_DIR:-$SCRIPT_DIR/dist}"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+DIST_DIR="${DIST_DIR:-$REPO_DIR/dist}"
 
 # ------------------------------------------------------------------ output ---
 if [ -t 1 ]; then C_G=$'\033[32m'; C_Y=$'\033[33m'; C_R=$'\033[31m'; C_B=$'\033[36m'; C_0=$'\033[0m'; else C_G= C_Y= C_R= C_B= C_0=; fi
@@ -63,7 +64,7 @@ mkdir -p "$DIST_DIR"
 if [ -f "$QCOW2_FILE" ] && [ "$FORCE" != "1" ]; then
   ok "qcow2 already present: $QCOW2_FILE"
   info "size: $(du -h "$QCOW2_FILE" | cut -f1)"
-  info "use FORCE=1 to rebuild it, or run ./run-metasploitable3.sh $VARIANT"
+  info "use FORCE=1 to rebuild it, or run ./scripts/run-metasploitable3.sh $VARIANT"
   exit 0
 fi
 
@@ -119,5 +120,5 @@ rm -rf "$WORK_DIR"
 ok "created: $QCOW2_FILE ($(du -h "$QCOW2_FILE" | cut -f1))"
 qemu-img info "$QCOW2_FILE" | sed 's/^/    /'
 echo
-ok "done. boot it with:  ./run-metasploitable3.sh $VARIANT"
+ok "done. boot it with:  ./scripts/run-metasploitable3.sh $VARIANT"
 info "default credentials (Metasploitable 3): vagrant / vagrant"

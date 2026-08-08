@@ -8,7 +8,7 @@
 # forwarded to 127.0.0.1 on the host. Attack it from this host.
 #
 # Usage:
-#   ./run-metasploitable3.sh [ub1404|win2k8]
+#   ./scripts/run-metasploitable3.sh [ub1404|win2k8]
 #
 # Environment overrides:
 #   RAM_MB=2048        guest memory in MiB
@@ -26,7 +26,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DIST_DIR="${DIST_DIR:-$SCRIPT_DIR/dist}"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+DIST_DIR="${DIST_DIR:-$REPO_DIR/dist}"
 
 # ------------------------------------------------------------------ output ---
 if [ -t 1 ]; then C_G=$'\033[32m'; C_Y=$'\033[33m'; C_R=$'\033[31m'; C_B=$'\033[36m'; C_0=$'\033[0m'; else C_G= C_Y= C_R= C_B= C_0=; fi
@@ -46,7 +47,7 @@ esac
 DISK="${DISK:-$DIST_DIR/${BOX}.qcow2}"
 if [ ! -f "$DISK" ]; then
   err "disk not found: $DISK"
-  err "run first:  ./download-metasploitable3.sh $VARIANT"
+  err "run first:  ./scripts/download-metasploitable3.sh $VARIANT"
   exit 1
 fi
 command -v qemu-system-x86_64 >/dev/null 2>&1 || { err "qemu-system-x86_64 not found"; exit 1; }
@@ -88,12 +89,31 @@ args+=( -drive file="$DISK",format=qcow2,if=ide,cache=writeback )
 [ "$SNAPSHOT" = "1" ] && { args+=( -snapshot ); warn "SNAPSHOT mode: disk writes are discarded on exit"; }
 
 # --------------------------------------------------------------- network ---
+# A single busy host port makes QEMU abort the whole launch, so probe each
+# forward and skip the ones already bound on the host.
+port_in_use() {
+  local p="$1"
+  if command -v ss >/dev/null 2>&1; then
+    ss -ltnH "sport = :$p" 2>/dev/null | grep -q .
+  else
+    (exec 3<>/dev/tcp/127.0.0.1/"$p") 2>/dev/null && { exec 3>&- 3<&- 2>/dev/null; return 0; } || return 1
+  fi
+}
+
+APPLIED=()
 case "$NET_MODE" in
   user)
     netopt="user,id=net0"
     [ "$RESTRICT" = "on" ] && netopt="${netopt},restrict=on"
-    for f in "${FWD[@]}"; do netopt="${netopt},hostfwd=tcp:127.0.0.1:${f%%:*}-:${f##*:}"; done
+    skipped=()
+    for f in "${FWD[@]}"; do
+      hp="${f%%:*}"; gp="${f##*:}"
+      if port_in_use "$hp"; then skipped+=("${hp}->${gp}"); continue; fi
+      netopt="${netopt},hostfwd=tcp:127.0.0.1:${hp}-:${gp}"
+      APPLIED+=("${hp}:${gp}")
+    done
     args+=( -netdev "$netopt" -device e1000,netdev=net0 )
+    [ ${#skipped[@]} -gt 0 ] && warn "host port(s) busy, forward skipped: ${skipped[*]}"
     ;;
   tap)
     warn "tap mode: expecting existing device '$TAP' on an ISOLATED bridge (needs privileges)"
@@ -121,9 +141,17 @@ info "accel       : $ACCEL"
 info "resources   : ${RAM_MB} MiB RAM, ${CPUS} vCPU"
 info "network     : $NET_MODE${RESTRICT:+ (restrict=$RESTRICT)}"
 if [ "$NET_MODE" = "user" ]; then
-  info "port forwards (host 127.0.0.1 -> guest):"
-  for f in "${FWD[@]}"; do printf '                127.0.0.1:%-6s -> %s\n' "${f%%:*}" "${f##*:}"; done
-  info "e.g. SSH:  ssh vagrant@127.0.0.1 -p 2222   (password: vagrant)"
+  if [ ${#APPLIED[@]} -gt 0 ]; then
+    info "port forwards (host 127.0.0.1 -> guest):"
+    ssh_hp=""
+    for a in "${APPLIED[@]}"; do
+      printf '                127.0.0.1:%-6s -> %s\n' "${a%%:*}" "${a##*:}"
+      [ "${a##*:}" = "22" ] && ssh_hp="${a%%:*}"
+    done
+    [ -n "$ssh_hp" ] && info "e.g. SSH:  ssh vagrant@127.0.0.1 -p $ssh_hp   (password: vagrant)"
+  else
+    warn "no host port forwards active (all busy) - guest still NAT-reachable inside QEMU"
+  fi
 fi
 if [ "$DISPLAY_MODE" = "vnc" ]; then
   vnc_port=$(( 5900 + ${VNC##*:} ))

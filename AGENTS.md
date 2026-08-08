@@ -220,6 +220,54 @@ Heavy services are opt-in: `--with-metasploit` (on by default for offensive),
 tools inside an isolated VM or container; for high-risk work, isolate the
 tool-executing host from the operator's main machine.
 
+### Metasploitable 3 target lab (start / stop)
+
+Metasploitable 3 is the deliberately-vulnerable local target the scope-gated
+Execution Skills practice against. It runs under QEMU/KVM with user-mode NAT, so
+its services are exposed only on `127.0.0.1` of this host and nothing on the LAN
+can reach it. It is an intentionally-insecure box: keep it on loopback, and
+treat "attack the local lab" as authorized only because the operator owns it.
+
+Fetch and convert the disk once (~2.1 GB download, writes `dist/*.qcow2`):
+
+```bash
+./scripts/download-metasploitable3.sh ub1404   # Ubuntu 14.04 Linux target
+```
+
+Start it in the background with 16 GB RAM. `setsid --fork` detaches QEMU into its
+own session so it outlives the shell; output goes to a log, disk writes are
+persistent (`SNAPSHOT=0`), and the console is on VNC `127.0.0.1:5900`:
+
+```bash
+RAM_MB=16384 CPUS=2 DISPLAY_MODE=vnc SNAPSHOT=0 \
+  setsid --fork ./scripts/run-metasploitable3.sh ub1404 \
+  </dev/null >dist/ms3-ub1404.run.log 2>&1
+```
+
+If host port 5900 is already taken, move the console: add `VNC=127.0.0.1:1`
+(that is TCP 5901). For a disposable run whose disk writes are discarded on exit,
+set `SNAPSHOT=1`.
+
+Check status, connect, and read the live port map from the launch log:
+
+```bash
+tail -n 40 dist/ms3-ub1404.run.log            # launch log + host->guest forwards
+pgrep -af 'qemu-system-x86_64 .*metasploitable'   # running? shows the PID
+ssh vagrant@127.0.0.1 -p 2222                  # shell in guest (password: vagrant)
+vncviewer 127.0.0.1:5900                       # guest console (5901 if you moved it)
+```
+
+Forwarded services land on `127.0.0.1` (defaults: 2222->22, 2121->21,
+13306->3306, 8080/8181/8282/8383/8484/8585 web apps, 6697 IRC, 9200
+Elasticsearch, 3000/3500). A host port already in use is skipped and logged, not
+fatal.
+
+Stop it gracefully (SIGTERM tells QEMU to power the guest off):
+
+```bash
+pkill -TERM -f 'qemu-system-x86_64 .*metasploitable3-ub1404'   # or: kill <PID>
+```
+
 ## Legal disclaimer
 
 This project is for authorized security testing and defensive operations only.
