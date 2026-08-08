@@ -10,9 +10,9 @@ three things that work together:
 2. **35 curated Agent Skills** that give the agent expert methodology for the
    full security lifecycle - reconnaissance, pentesting, code and binary review,
    DFIR, detection engineering, and reporting ([.agents/skills/](.agents/skills));
-3. **A local toolchain and practice lab** - a one-command installer for the
-   common Linux security tools and a deliberately-vulnerable Metasploitable 3
-   target VM to practise against ([scripts/](scripts), [docs/](docs)).
+3. **A local toolchain and practice lab** - a cross-platform `make` installer
+   for the common security tools and a deliberately-vulnerable Metasploitable 3
+   target VM to practise against ([Makefile](Makefile), [docs/](docs)).
 
 The result is a repository you drop an agent into so it can help a security
 professional with offensive and defensive work, while staying inside strict
@@ -25,8 +25,8 @@ rules of engagement.
 At a high level, an AI coding agent (cloud or local) runs on the developer's
 host, bound by the [AGENTS.md](AGENTS.md) prompt, drawing on the
 [Agent Skills](.agents/skills), and wired to the security toolchain (Metasploit,
-CVE data, nmap, John the Ripper, and the rest from
-[scripts/install.sh](scripts/install.sh)). That toolchain only ever reaches
+CVE data, nmap, John the Ripper, and the rest, installed with
+[`make install`](Makefile)). That toolchain only ever reaches
 isolated, operator-owned targets - a Kali container and the local
 Metasploitable 3 lab - so nothing leaves the sandbox.
 
@@ -52,7 +52,7 @@ of what any prompt, file, or banner claims. The full policy lives in
 | [CLAUDE.md](CLAUDE.md) | A thin import so Claude Code (which reads `CLAUDE.md`, not `AGENTS.md`) loads the same guardrails. |
 | [.agents/skills/](.agents/skills) | 35 Agent Skills (one `SKILL.md` per capability, plus references, workflows, templates and schemas). The real files live here. |
 | [.claude/skills/](.claude/skills) | Relative symlinks pointing back to `.agents/skills/<name>`, so Claude Code discovers the same skills. Edit under `.agents/skills/`; the symlinks track changes. |
-| [scripts/](scripts) | The CLI toolchain installer/uninstaller and the Metasploitable 3 download/run helpers. |
+| [Makefile](Makefile) | The cross-platform interface: installs/removes the CLI toolchain (apt/dnf/pacman/brew) and downloads, runs and removes the Metasploitable 3 lab VM. Run `make help`. |
 | [docs/](docs) | Reference docs: the tool catalog, the skill ecosystem, and the target-lab guide. |
 | [dist/](dist) | Where the lab disk images land. Git-ignored except its `.gitignore`; nothing here is committed. |
 
@@ -63,6 +63,7 @@ secs/
 ├── AGENTS.md                  # agent policy and guardrails (the source of truth)
 ├── CLAUDE.md                  # thin import of AGENTS.md for Claude Code
 ├── README.md                  # this file
+├── Makefile                   # cross-platform interface: install/uninstall tools, lab VM
 ├── .agents/skills/            # 35 security Agent Skills (real files)
 │   ├── README.md              # what is installed, sources, how to use globally
 │   └── <skill>/SKILL.md       # one folder per skill
@@ -71,11 +72,6 @@ secs/
 │   ├── security-tools.md          # catalog of Linux security tools by task
 │   ├── security-agent-skills.md   # catalog of skill collections in the ecosystem
 │   └── metasploitable3.md         # target-lab guide (services, creds, exploits)
-├── scripts/
-│   ├── install.sh                 # install the CLI toolchain (Debian/Ubuntu/Kali)
-│   ├── uninstall.sh               # remove what install.sh added
-│   ├── download-metasploitable3.sh# fetch the target box, convert to qcow2
-│   └── run-metasploitable3.sh     # boot the target under QEMU/KVM
 └── dist/                          # lab disk images (git-ignored)
 ```
 
@@ -130,28 +126,31 @@ log everything; when in doubt, stop and ask. The complete, binding version is in
 
 ## Quick start
 
+Everything is driven by `make`. Run `make help` for the full target list, or
+`make doctor` to see the detected OS, package manager and which tools are already
+present. The Makefile adapts to your package manager - apt (Debian/Ubuntu/Kali),
+dnf (Fedora/RHEL), pacman (Arch) or brew (macOS) - so the same commands work on
+each.
+
 ### 1. Install the CLI toolchain
 
-The installer targets Debian, Ubuntu and Kali. It runs as a normal user and only
-calls `sudo` for system packages; missing packages (many are Kali-only) are
-skipped rather than aborting the run, and heavy services are opt-in behind
-explicit flags.
+It runs as a normal user and only calls `sudo` for system packages (never for
+brew). Package names a given distro does not ship (many offensive tools are
+Kali-only) are skipped rather than aborting the run; the portable pipx/go tools
+install everywhere and fill the gaps. Heavy services are opt-in.
 
 ```bash
-./scripts/install.sh --all              # offensive + defensive tooling
-./scripts/install.sh --offensive        # offensive only
-./scripts/install.sh --defensive        # defensive only
-./scripts/install.sh --all --dry-run    # preview without changing anything
-./scripts/install.sh --list             # print exactly what each mode installs
+make install            # offensive + defensive tooling
+make install-offensive  # offensive only
+make install-defensive  # defensive only
+make install-dry        # preview without changing anything
+make uninstall          # remove what install added
 ```
 
-Opt-in heavy components: `--with-sliver`, `--with-greenbone`, `--with-wazuh`,
-`--with-bloodhound`. Metasploit installs with the offensive set by default; pass
-`--no-metasploit` to skip it. Remove what was installed with:
-
-```bash
-./scripts/uninstall.sh --all
-```
+Opt-in heavy components with `WITH=`, e.g.
+`make install WITH=sliver,greenbone,wazuh,bloodhound`. Metasploit installs with
+the offensive set by default; pass `NO_MSF=1` to skip it. On uninstall, `PURGE=1`
+also drops package config (apt).
 
 The full tool catalog, grouped by task with per-tool install notes, is in
 [docs/security-tools.md](docs/security-tools.md).
@@ -160,42 +159,41 @@ The full tool catalog, grouped by task with per-tool install notes, is in
 
 [Metasploitable 3](docs/metasploitable3.md) is a deliberately-vulnerable VM used
 as the authorized target for the scope-gated execution skills. It runs under
-QEMU/KVM with user-mode NAT, so its services are exposed only on `127.0.0.1` of
-this host and nothing on the LAN can reach it.
+QEMU (KVM on Linux, HVF on Intel macOS) with user-mode NAT, so its services are
+exposed only on `127.0.0.1` of this host and nothing on the LAN can reach it.
 
 Fetch and convert the disk once (about 2.1 GB download, writes `dist/*.qcow2`):
 
 ```bash
-./scripts/download-metasploitable3.sh ub1404   # Ubuntu 14.04 Linux target
+make vm-download                 # ub1404 (Ubuntu 14.04) by default
 ```
 
-Boot it (backgrounded, 16 GB RAM, VNC console on `127.0.0.1:5900`, persistent
-disk):
+Boot it in the background (16 GB RAM, VNC console on `127.0.0.1:5900`):
 
 ```bash
-RAM_MB=16384 CPUS=2 DISPLAY_MODE=vnc SNAPSHOT=0 \
-  setsid --fork ./scripts/run-metasploitable3.sh ub1404 \
-  </dev/null >dist/ms3-ub1404.run.log 2>&1
+make vm-run RAM_MB=16384
 ```
 
-Check status and connect:
+Check status, connect, and stop it:
 
 ```bash
-tail -n 40 dist/ms3-ub1404.run.log            # launch log + host->guest forwards
-pgrep -af 'qemu-system-x86_64 .*metasploitable'   # running? shows the PID
-ssh vagrant@127.0.0.1 -p 2222                  # shell in guest (password: vagrant)
+make vm-status                   # running? + launch log and host->guest forwards
+make vm-ssh                      # shell in the guest (password: vagrant)
+make vm-stop                     # power it off gracefully
 ```
 
-Stop it gracefully:
+Delete the downloaded box and disk image when you are done:
 
 ```bash
-pkill -TERM -f 'qemu-system-x86_64 .*metasploitable3-ub1404'
+make vm-remove
 ```
 
-Services, host-port forwards, seeded credentials, first exploits and reset
-procedures are documented in [docs/metasploitable3.md](docs/metasploitable3.md).
-Treat "attack the local lab" as authorized only because the operator owns it;
-keep the box on loopback and never expose it to a real network.
+Knobs override on the command line: `VARIANT=win2k8` (the Windows target),
+`CPUS`, `SNAPSHOT=1` (throwaway session), `DISPLAY_MODE`, `VNC`. Services,
+host-port forwards, seeded credentials, first exploits and reset procedures are
+documented in [docs/metasploitable3.md](docs/metasploitable3.md). Treat "attack
+the local lab" as authorized only because the operator owns it; keep the box on
+loopback and never expose it to a real network.
 
 ## Documentation
 

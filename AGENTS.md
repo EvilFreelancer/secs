@@ -2,7 +2,7 @@
 
 This repository is an **authorized information-security assistant**. An AI agent
 (Claude Code, Cursor, Codex, or any AGENTS.md-aware tool) uses the Skills in
-`.claude/skills/` and the CLI tooling installed by `scripts/install.sh` to help a
+`.claude/skills/` and the CLI tooling installed by `make install` to help a
 security professional with offensive and defensive work: reconnaissance,
 vulnerability assessment, penetration testing, detection engineering, and
 incident response.
@@ -116,12 +116,17 @@ covers it.
 - `enumerating-network-services` - SMB/FTP/SSH/RDP/HTTP enumeration (nmap);
 - `testing-web-applications` - SQLi/XSS/SSRF and more (sqlmap, ffuf, nuclei, nikto);
 - `testing-apis` - REST and GraphQL auth and logic flaws;
+- `testing-mobile-applications` - Android/iOS app testing (OWASP MASVS/MASTG, Frida, objection, MobSF);
+- `testing-ics-ot-protocols` - passive-first, safety-gated OT/ICS assessment (Modbus, DNP3, S7comm, Purdue, IEC 62443);
 - `attacking-active-directory` - Kerberos, BloodHound, Impacket, NetExec;
 - `cracking-passwords` - hashcat/john, spraying (offline unless auth confirmed);
 - `escalating-linux-privileges`, `escalating-windows-privileges` - privesc;
 - `exploiting-cloud-platforms` - AWS/Azure/GCP misconfiguration exploitation;
 - `attacking-wireless-networks` - WPA/WPA2, WPS, evil twin;
-- `transferring-files` - post-exploitation file transfer.
+- `transferring-files` - post-exploitation file transfer;
+- `establishing-persistence` - authorized post-ex persistence, least-aggressive first, logged for cleanup;
+- `recognizing-deception` - spot honeytokens, honey accounts, and canaries before triggering them;
+- `performing-social-engineering` - authorized phishing/vishing/pretext assessments (org sign-off + HR/legal).
 
 **Code, binary, and supply-chain review (Advisory)**
 - `auditing-code-for-vulnerabilities` - threat-model-driven source audit;
@@ -131,15 +136,21 @@ covers it.
 - `securing-ai-systems` - LLM/agent security testing;
 - `iac-security` - Terraform/CloudFormation/K8s scanning;
 - `container-security` - image and Kubernetes assessment;
-- `vetting-agent-extensions` - decide if a Skill/plugin/MCP server is safe to install.
+- `vetting-agent-extensions` - decide if a Skill/plugin/MCP server is safe to install;
+- `auditing-mcp-servers` - deep audit of an MCP server implementation (tool poisoning, SSRF, transport, secrets).
 
 **Defense, DFIR, and detection (Advisory)**
 - `hunting-threats` - hypothesis-driven hunts;
+- `producing-threat-intelligence` - CTI lifecycle, IOC enrichment/grading, actor tracking, intel products;
 - `triaging-security-alerts` - alert queue to a defensible disposition;
 - `responding-to-incidents` - DFIR: triage, acquisition, timelining;
+- `analyzing-phishing-emails` - safe phishing-email triage, header/URL/attachment IOCs;
+- `hunting-web-backdoors` - hunt planted webshells and server-side backdoors on web hosts;
 - `analyzing-malware` - containment-first sample analysis;
 - `analyzing-network-traffic` - PCAP/telemetry analysis;
 - `analyzing-memory-images` - Volatility 3 memory forensics;
+- `investigating-windows-endpoints` - Windows host disk/registry artifact DFIR;
+- `investigating-aws-incidents`, `investigating-azure-incidents`, `investigating-gcp-incidents`, `investigating-m365-entra` - cloud and M365/Entra control-plane incident investigation;
 - `managing-vulnerabilities` - risk-based remediation backlog;
 - `hardening-cloud-posture` - proactive cloud hardening;
 - `engineering-detections` - build and tune Sigma/YARA/Suricata content;
@@ -203,70 +214,66 @@ itself a stop condition.
 
 ## Environment and setup commands
 
-Install the CLI toolchain (Debian/Ubuntu/Kali):
+Everything is driven by `make` (run `make help` for the full list, `make doctor`
+to see the detected OS and package manager). It adapts to apt (Debian/Ubuntu/
+Kali), dnf (Fedora/RHEL), pacman (Arch) or brew (macOS). Install the CLI
+toolchain:
 
 ```bash
-./scripts/install.sh --all              # offensive + defensive tooling
-./scripts/install.sh --offensive        # offensive only
-./scripts/install.sh --defensive        # defensive only
-./scripts/install.sh --all --dry-run    # preview without changes
-./scripts/uninstall.sh --all            # remove what scripts/install.sh added
+make install            # offensive + defensive tooling
+make install-offensive  # offensive only
+make install-defensive  # defensive only
+make install-dry        # preview without changes
+make uninstall          # remove what install added
 ```
 
-Heavy services are opt-in: `--with-metasploit` (on by default for offensive),
-`--with-sliver`, `--with-greenbone`, `--with-wazuh`, `--with-bloodhound`. See
-`docs/security-tools.md` for the full tool catalog and per-tool installation, and
-`docs/security-agent-skills.md` for the Skill ecosystem. Prefer running active
-tools inside an isolated VM or container; for high-risk work, isolate the
-tool-executing host from the operator's main machine.
+Heavy services are opt-in via `WITH=` (comma-separated):
+`make install WITH=sliver,greenbone,wazuh,bloodhound`. Metasploit installs with
+the offensive set by default; pass `NO_MSF=1` to skip it. On uninstall, `PURGE=1`
+also drops package config (apt). See `docs/security-tools.md` for the full tool
+catalog and per-tool installation, and `docs/security-agent-skills.md` for the
+Skill ecosystem. Prefer running active tools inside an isolated VM or container;
+for high-risk work, isolate the tool-executing host from the operator's main
+machine.
 
 ### Metasploitable 3 target lab (start / stop)
 
 Metasploitable 3 is the deliberately-vulnerable local target the scope-gated
-Execution Skills practice against. It runs under QEMU/KVM with user-mode NAT, so
-its services are exposed only on `127.0.0.1` of this host and nothing on the LAN
-can reach it. It is an intentionally-insecure box: keep it on loopback, and
-treat "attack the local lab" as authorized only because the operator owns it.
+Execution Skills practice against. It runs under QEMU (KVM on Linux, HVF on Intel
+macOS) with user-mode NAT, so its services are exposed only on `127.0.0.1` of
+this host and nothing on the LAN can reach it. It is an intentionally-insecure
+box: keep it on loopback, and treat "attack the local lab" as authorized only
+because the operator owns it.
 
 Fetch and convert the disk once (~2.1 GB download, writes `dist/*.qcow2`):
 
 ```bash
-./scripts/download-metasploitable3.sh ub1404   # Ubuntu 14.04 Linux target
+make vm-download                 # ub1404 (Ubuntu 14.04) by default
 ```
 
-Start it in the background with 16 GB RAM. `setsid --fork` detaches QEMU into its
-own session so it outlives the shell; output goes to a log, disk writes are
-persistent (`SNAPSHOT=0`), and the console is on VNC `127.0.0.1:5900`:
+Start it in the background with 16 GB RAM (the target is detached and outlives
+the shell; disk writes are persistent, console on VNC `127.0.0.1:5900`):
 
 ```bash
-RAM_MB=16384 CPUS=2 DISPLAY_MODE=vnc SNAPSHOT=0 \
-  setsid --fork ./scripts/run-metasploitable3.sh ub1404 \
-  </dev/null >dist/ms3-ub1404.run.log 2>&1
+make vm-run RAM_MB=16384
 ```
 
-If host port 5900 is already taken, move the console: add `VNC=127.0.0.1:1`
-(that is TCP 5901). For a disposable run whose disk writes are discarded on exit,
-set `SNAPSHOT=1`.
+Move the console with `VNC=127.0.0.1:1` (that is TCP 5901) if 5900 is taken. For
+a disposable run whose disk writes are discarded on exit, add `SNAPSHOT=1`. Use
+`VARIANT=win2k8` for the Windows target.
 
-Check status, connect, and read the live port map from the launch log:
+Check status, connect, and stop:
 
 ```bash
-tail -n 40 dist/ms3-ub1404.run.log            # launch log + host->guest forwards
-pgrep -af 'qemu-system-x86_64 .*metasploitable'   # running? shows the PID
-ssh vagrant@127.0.0.1 -p 2222                  # shell in guest (password: vagrant)
-vncviewer 127.0.0.1:5900                       # guest console (5901 if you moved it)
+make vm-status                   # running? + launch log and host->guest forwards
+make vm-ssh                      # shell in the guest (password: vagrant)
+make vm-stop                     # power the guest off gracefully
 ```
 
 Forwarded services land on `127.0.0.1` (defaults: 2222->22, 2121->21,
 13306->3306, 8080/8181/8282/8383/8484/8585 web apps, 6697 IRC, 9200
 Elasticsearch, 3000/3500). A host port already in use is skipped and logged, not
-fatal.
-
-Stop it gracefully (SIGTERM tells QEMU to power the guest off):
-
-```bash
-pkill -TERM -f 'qemu-system-x86_64 .*metasploitable3-ub1404'   # or: kill <PID>
-```
+fatal. Remove the downloaded box and disk image with `make vm-remove`.
 
 ## Legal disclaimer
 
