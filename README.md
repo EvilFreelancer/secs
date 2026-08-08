@@ -1,8 +1,9 @@
-# Information Security Assistant (secs)
+# SECS - SECurity aSsistant
 
-A self-contained setup that turns an AGENTS.md-aware AI coding agent (Claude
-Code, Cursor, Codex, OpenCode, or any compatible tool) into an **authorized
-information-security assistant**. It ships three things that work together:
+**SECS** (SECurity aSsistant) is a self-contained setup that turns an
+AGENTS.md-aware AI coding agent (Claude Code, Cursor, Codex, OpenCode, or any
+compatible tool) into an **authorized information-security assistant**. It ships
+three things that work together:
 
 1. **Guardrails and operating policy** for the agent - what it may do, when it
    must stop, and how it must ask for authorization ([AGENTS.md](AGENTS.md));
