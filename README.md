@@ -172,41 +172,18 @@ The full tool catalog, grouped by task with per-tool install notes, is in
 
 [Metasploitable 3](docs/metasploitable3.md) is a deliberately-vulnerable VM used
 as the authorized target for the scope-gated execution skills. It runs under
-QEMU (KVM on Linux, HVF on Intel macOS) with user-mode NAT, so its services are
-exposed only on `127.0.0.1` of this host and nothing on the LAN can reach it.
+QEMU with user-mode NAT, so its services are exposed only on `127.0.0.1` of this
+host and nothing on the LAN can reach it.
 
-Fetch and convert the disk once (about 2.1 GB download, writes `dist/*.qcow2`):
-
-```bash
-make vm-download                 # ub1404 (Ubuntu 14.04) by default
-```
-
-Boot it in the background (16 GB RAM, VNC console on `127.0.0.1:5900`):
-
-```bash
-make vm-run RAM_MB=16384
-```
-
-Check status, connect, and stop it:
-
-```bash
-make vm-status                   # running? + launch log and host->guest forwards
-make vm-ssh                      # shell in the guest (password: vagrant)
-make vm-stop                     # power it off gracefully
-```
-
-Delete the downloaded box and disk image when you are done:
-
-```bash
-make vm-remove
-```
-
-Knobs override on the command line: `VARIANT=win2k8` (the Windows target),
-`CPUS`, `SNAPSHOT=1` (throwaway session), `DISPLAY_MODE`, `VNC`. Services,
-host-port forwards, seeded credentials, first exploits and reset procedures are
-documented in [docs/metasploitable3.md](docs/metasploitable3.md). Treat "attack
-the local lab" as authorized only because the operator owns it; keep the box on
-loopback and never expose it to a real network.
+The setup, boot, connection, port-forward and credential steps are deliberately
+kept out of this README and out of the agent's always-loaded policy. A human
+operator will find them in the target-lab guide,
+[docs/metasploitable3.md](docs/metasploitable3.md); the agent must not read that
+guide, inspect the `Makefile`, or connect to the VM until the operator has
+authorized the local-lab engagement for the session (see the gate in
+[AGENTS.md](AGENTS.md)). Treat "attack the local lab" as authorized only because
+the operator owns it; keep the box on loopback and never expose it to a real
+network.
 
 ## Documentation
 

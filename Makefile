@@ -258,7 +258,7 @@ help:
 	@echo "  make vm-run             Boot it in the background (RAM_MB=$(RAM_MB) CPUS=$(CPUS))"
 	@echo "  make vm-run-fg          Boot it in the foreground"
 	@echo "  make vm-status          Whether it is running + tail the log"
-	@echo "  make vm-ssh             SSH into the guest (vagrant/vagrant)"
+	@echo "  make vm-ssh             SSH into the guest (login in docs/metasploitable3.md)"
 	@echo "  make vm-stop            Power it off gracefully"
 	@echo "  make vm-remove          Delete the downloaded box and disk image"
 	@echo ""
@@ -498,7 +498,7 @@ vm-download:
 	qemu-img convert -p -f vmdk -O qcow2 "$(DIST)/.work-$(BOX)/$$vmdk" $(QCOW2).part; \
 	mv $(QCOW2).part $(QCOW2); rm -rf $(DIST)/.work-$(BOX); \
 	qemu-img info $(QCOW2) | sed 's/^/    /'; \
-	echo "done -> $(QCOW2). Boot it with 'make vm-run VARIANT=$(VARIANT)' (creds: vagrant/vagrant)"
+	echo "done -> $(QCOW2). Boot it with 'make vm-run VARIANT=$(VARIANT)' (login in docs/metasploitable3.md)"
 
 # Foreground boot (execs qemu). vm-run wraps this in nohup for the background case.
 _vm-boot:
@@ -543,7 +543,7 @@ vm-run:
 	if pgrep -f 'qemu-system-x86_64 .*$(BOX)' >/dev/null 2>&1; then echo "already running: $(BOX) ('make vm-stop' to stop)"; exit 0; fi; \
 	echo "booting $(VARIANT) in the background, log -> $(RUN_LOG)"; \
 	nohup $(MAKE) --no-print-directory _vm-boot VARIANT='$(VARIANT)' RAM_MB='$(RAM_MB)' CPUS='$(CPUS)' SNAPSHOT='$(SNAPSHOT)' DISPLAY_MODE='$(DISPLAY_MODE)' VNC='$(VNC)' NET_MODE='$(NET_MODE)' TAP='$(TAP)' RESTRICT='$(RESTRICT)' </dev/null >$(RUN_LOG) 2>&1 & \
-	sleep 1; echo "started - 'make vm-status' for forwards, 'make vm-ssh' to log in (vagrant/vagrant)"
+	sleep 1; echo "started - 'make vm-status' for forwards, 'make vm-ssh' to log in (creds in docs/metasploitable3.md)"
 
 vm-run-fg: _vm-boot
 
@@ -554,7 +554,7 @@ vm-status:
 	@[ -f $(RUN_LOG) ] && { echo "--- tail $(RUN_LOG) ---"; tail -n 20 $(RUN_LOG); } || true
 
 vm-ssh:
-	ssh -p 2222 -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa -o KexAlgorithms=+diffie-hellman-group1-sha1 vagrant@127.0.0.1
+	@ssh -p 2222 -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa -o KexAlgorithms=+diffie-hellman-group1-sha1 vagrant@127.0.0.1
 
 vm-stop:
 	@pkill -TERM -f 'qemu-system-x86_64 .*$(BOX)' 2>/dev/null && echo "sent SIGTERM to $(BOX)" || echo "not running: $(BOX)"
