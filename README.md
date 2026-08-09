@@ -20,7 +20,7 @@ rules of engagement.
 
 ## How it fits together
 
-![High-level architecture of SECS: an AI coding agent on the dev host, governed by the AGENTS.md prompt and equipped with security skills, drives a Linux security toolchain against isolated targets](assets/plan.jpg)
+![High-level SECS architecture: an AI coding agent on the developer host (the SECS Harness), governed by the AGENTS.md prompt and equipped with Agent Skills and a security toolchain (Metasploit, CVE data, nmap, John the Ripper), driving isolated targets - a Kali docker container and the local Metasploitable 3 lab](assets/plan.png)
 
 At a high level, an AI coding agent (cloud or local) runs on the developer's
 host, bound by the [AGENTS.md](AGENTS.md) prompt, drawing on the
